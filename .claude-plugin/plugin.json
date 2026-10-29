@@ -1,0 +1,21 @@
+{
+  "name": "resurrect",
+  "version": "2.5.5",
+  "description": "Bring back anything that is gone but left traces online (dead sites and web apps, Flash games, discontinued foods, board games, dead APIs, defunct rides) as exactly as possible: deep research into a sourced pack of evidence and recovered original pieces, then a fresh build, an independent review and a fix round.",
+  "author": {
+    "name": "sshah03"
+  },
+  "license": "MIT",
+  "keywords": [
+    "abandonware",
+    "clean-room",
+    "digital-preservation",
+    "facsimile",
+    "lost-media",
+    "rebuild",
+    "recipes",
+    "resurrect",
+    "reverse-engineering",
+    "wayback"
+  ]
+}

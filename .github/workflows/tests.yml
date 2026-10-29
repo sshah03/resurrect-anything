@@ -1,0 +1,89 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # The offline self-test on the oldest Python the README promises and the newest, on all three systems.
+  selftest:
+    name: ${{ matrix.os }}, Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, python: "3.9" }
+          - { os: ubuntu-latest, python: "3.14" }
+          - { os: macos-latest, python: "3.14" }
+          - { os: windows-latest, python: "3.9" }
+          - { os: windows-latest, python: "3.14" }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run the self-test
+        run: python skills/resurrect/scripts/selftest.py
+
+  # The same with the optional tools installed the way a user would: ffmpeg from the package manager, the rest
+  # from `enhance.py setup` into the skill's own environment. This runs the groups the plain job skips.
+  extras:
+    name: with the optional tools, ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install ffmpeg
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then sudo apt-get update && sudo apt-get install -y ffmpeg; else brew install ffmpeg; fi
+      - name: enhance.py setup
+        run: python skills/resurrect/scripts/enhance.py setup
+      - name: Chromium's system libraries (Linux)
+        if: runner.os == 'Linux'
+        run: sudo ~/.cache/resurrect/heavy/bin/python -m playwright install-deps chromium
+      - name: Run the self-test
+        run: python skills/resurrect/scripts/selftest.py
+
+  # Install the repo as a Claude Code plugin, the way a user would, and run the self-test from the installed
+  # copy. Installing plugins doesn't need a Claude login. The marketplace is this checkout, so a pull request
+  # tests its own changes.
+  plugin-install:
+    name: plugin install, ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash          # Git Bash on Windows, which is what Claude Code uses there
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code && claude --version
+      - name: Check the plugin files
+        run: claude plugin validate .
+      - name: Install the plugin
+        run: |
+          claude plugin marketplace add ./
+          claude plugin install resurrect@resurrect
+          claude plugin list
+      - name: Run the self-test from the installed copy
+        run: |
+          # the same lines as AGENTS.md, with python rather than python3
+          ROOT="$(claude plugin list --json | python -c "import json,sys; print(next(p['installPath'] for p in json.load(sys.stdin) if p['id'] == 'resurrect@resurrect'))")"
+          echo "installed at: $ROOT"
+          case "$ROOT" in "$GITHUB_WORKSPACE"*) echo "::error::the plugin ran from the checkout, not an installed copy"; exit 1;; esac
+          python "$ROOT/skills/resurrect/scripts/selftest.py"

@@ -1,0 +1,8 @@
+# Test runs hold archived originals, recordings and private baselines: never published
+test-runs/
+resurrections/
+__pycache__/
+*.pyc
+.DS_Store
+# The maintainer's own release notes: kept locally, not published
+CHANGELOG.md

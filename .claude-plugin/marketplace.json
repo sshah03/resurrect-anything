@@ -1,0 +1,14 @@
+{
+  "name": "resurrect",
+  "description": "The resurrect skill: bring back things that are gone, as exactly as the surviving traces allow.",
+  "owner": {
+    "name": "sshah03"
+  },
+  "plugins": [
+    {
+      "name": "resurrect",
+      "source": "./",
+      "description": "Restore things that are gone (sites, web apps, Flash games, foods, board games, APIs, rides) as exactly as possible from their archived originals."
+    }
+  ]
+}

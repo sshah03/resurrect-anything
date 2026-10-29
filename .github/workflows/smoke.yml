@@ -1,0 +1,60 @@
+name: smoke test
+
+# The start of a real /resurrect run: Claude Code installs the plugin from GitHub, makes the workspace and
+# writes the briefs it would send its helpers, then stops before any research. A full run takes hours, so
+# this only checks the start. It uses a Claude login, costs well under a dollar and only runs when started
+# by hand (Actions tab, or `gh workflow run smoke.yml`). Needs the CLAUDE_CODE_OAUTH_TOKEN secret, from
+# `claude setup-token`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: Machine type
+        type: choice
+        options: [windows-latest, ubuntu-latest, macos-latest]
+        default: windows-latest
+
+jobs:
+  start:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install Claude Code and the plugin
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude --version
+          # from GitHub, as a user would, so Claude works from an installed copy of what's on main
+          claude plugin marketplace add "$GITHUB_REPOSITORY"
+          claude plugin install resurrect@resurrect
+          claude plugin list --json
+      - name: Start a run
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/My Project" && cd "$RUNNER_TEMP/My Project"
+          claude -p '/resurrect the goo.gl URL Shortener API
+
+          TEST MODE (from the skill author): do not research, install anything or start any agents. Only: 1) run ledger.py init for this target as the skill says; 2) write to briefs-test.md the build brief you would send later, filled in as far as you can now; 3) stop.' \
+            --allowedTools "Bash,Read,Write,Glob,Grep" --max-turns 30 \
+            --output-format stream-json --verbose > transcript.jsonl
+          tail -c 2000 transcript.jsonl
+      - name: Check the workspace and the brief
+        run: |
+          cd "$RUNNER_TEMP/My Project"
+          grep -q 'plugins/cache' transcript.jsonl || { echo "::error::Claude didn't run the installed copy"; exit 1; }
+          ls resurrections/*/state.json >/dev/null 2>&1 || { echo "::error::no workspace was made"; exit 1; }
+          test -s briefs-test.md || { echo "::error::no brief was written"; exit 1; }
+          grep -qi 'pack' briefs-test.md || { echo "::error::the brief doesn't point at the pack"; exit 1; }
+      - name: Keep the transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ inputs.os }}
+          path: ${{ runner.temp }}/My Project
