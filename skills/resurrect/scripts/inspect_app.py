@@ -138,10 +138,14 @@ def default_out(src: Path, out: str | None) -> Path:
 
 
 def rel(p: Path, base: Path) -> str:
-    try:
-        return str(p.relative_to(base))
-    except ValueError:
-        return str(p)
+    # forward slashes on every system. Windows can hand back a temp folder under its 8.3 short name
+    # (RUNNER~1), so try the resolved paths too
+    for a, b in ((p, base), (p.resolve(), base.resolve())):
+        try:
+            return a.relative_to(b).as_posix()
+        except ValueError:
+            pass
+    return p.as_posix()
 
 
 def looks_ui(s: str) -> bool:

@@ -1260,7 +1260,7 @@ def _contact_details(pack):
             if (low.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".invalid", ".test", ".example"))
                     or re.search(r"@example\.(com|org|net)$", low) or m in kept):
                 continue
-            item = f"{m} in {f.relative_to(pack)}"
+            item = f"{m} in {f.relative_to(pack).as_posix()}"
             if item not in found:
                 found.append(item)
     return found
@@ -1283,7 +1283,7 @@ def _hidden_contacts(pack) -> list[str]:
         rx = rb"[A-Za-z0-9._%+-]{2,}@[A-Za-z0-9-]{2,}(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,6}\b"  # ASCII only, it's binary
         for m in sorted({x.decode() for x in re.findall(rx, body)}):
             if not re.search(r"(?i)\.(png|jpe?g|gif|swf|as)$|@example\.", m):
-                found.append(f"{m} in {f.relative_to(pack)}")
+                found.append(f"{m} in {f.relative_to(pack).as_posix()}")
     return found
 
 

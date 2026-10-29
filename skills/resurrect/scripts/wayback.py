@@ -27,7 +27,7 @@ import hashlib
 import json
 import sys
 import urllib.parse
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import re  # noqa: E402
@@ -1202,7 +1202,7 @@ def uncaptured_from_rows(rows, captured_urls=()) -> list[dict]:
             "%7E", "~").replace("%7e", "~")
     by = collections.defaultdict(list)
     for r in rows:
-        if Path(urllib.parse.urlparse(norm_url(r["original"])).path.lower()).suffix in PROGRAM_MEDIA_EXT:
+        if PurePosixPath(urllib.parse.urlparse(norm_url(r["original"])).path.lower()).suffix in PROGRAM_MEDIA_EXT:
             by[key(r["original"])].append(r)
     done = {key(u) for u in captured_urls}
     out = []
@@ -1628,7 +1628,7 @@ def cmd_fetch(a):
     name = slugify(p.netloc + p.path) or "index"
     if len(p.netloc + p.path) > 55 or p.query:  # slugify cuts at 60 chars, hash keeps names unique
         name = name + "_" + hashlib.sha1((p.path + "?" + p.query).encode()).hexdigest()[:8]
-    suffix = Path(p.path).suffix
+    suffix = PurePosixPath(p.path).suffix
     ext, is_html = pick_ext(body, p.path)  # bytes win over names
     if is_html and suffix.lower() in (".jpg", ".jpeg", ".png", ".gif", ".swf", ".dcr", ".mp3", ".mid", ".wav",
                                       ".pdf", ".zip", ".jar", ".flv"):
@@ -1888,7 +1888,7 @@ def cmd_mirror(a):
             done[url] = ((root / old[0]).read_bytes(), old[1].get("served_ts"))
             reused[0] += 1
             return done[url]
-        if _t.time() > deadline:
+        if _t.time() >= deadline:
             done[url] = (None, NOT_FETCHED_TIME)
             return done[url]
         try:
@@ -2044,7 +2044,7 @@ def cmd_mirror(a):
         retry, still = [m for m in missing if not re.search(r"not archived|rejected|--original|out of time",
                                                             str(m.get("why")))], []
         for m in retry[:40]:
-            if _t.time() > deadline:
+            if _t.time() >= deadline:
                 still += [dict(x) for x in retry[retry.index(m):40]]  # out of time, report the rest as is
                 break
             done.pop(norm_url(m["url"]), None)
@@ -2168,7 +2168,7 @@ def _mirror_pages(a, root, start, site_host, queue, done, manifest, missing, gra
             attr = m.group(0).split("=", 1)[0].strip().lower()
             if not ref or ref.lower().startswith(SKIP_SCHEMES) or attr == "action":
                 return m.group(0)  # form targets are behaviour, not files
-            ext = Path(urllib.parse.urlparse(ref).path).suffix.lower()
+            ext = PurePosixPath(urllib.parse.urlparse(ref).path).suffix.lower()
             if attr == "value" and ext not in (".swf", ".dcr", ".flv", ".mp3", ".mid"):
                 return m.group(0)  # <param value> holds Flash movies, <input value> text
             # #A..#Z are one page: fetch once, keep the fragment
@@ -2180,7 +2180,7 @@ def _mirror_pages(a, root, start, site_host, queue, done, manifest, missing, gra
 
         def handle(m, ref, absu, frag):
             host = (urllib.parse.urlparse(absu).hostname or "").removeprefix("www.")
-            path_ext = Path(urllib.parse.urlparse(absu).path).suffix.lower()
+            path_ext = PurePosixPath(urllib.parse.urlparse(absu).path).suffix.lower()
             is_page = path_ext in PAGE_EXT and m.group(0).lower().lstrip().startswith("href")
             if plan is not None:  # first pass only lists assets
                 if not is_page and (a.offsite or host == site_host or host.endswith("." + site_host)

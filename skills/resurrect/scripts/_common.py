@@ -25,7 +25,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-VERSION = "2.5.5"
+VERSION = "2.5.6"
 USER_AGENT = os.environ.get(
     "RESURRECT_UA",
     f"resurrect-skill/{VERSION} (digital preservation research; +https://github.com/sshah03/resurrect-anything)",
